@@ -1,3 +1,5 @@
 streamlit
-langchain-groq
+langchain
+langchain-openai
 langchain-core
+langchain-groq
