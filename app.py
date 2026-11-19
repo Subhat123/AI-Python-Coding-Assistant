@@ -7,7 +7,7 @@ from langchain_groq import ChatGroq
 # ==================================================
 
 st.set_page_config(
-    page_title="NEURACODE | AI Coding Studio",
+    page_title="NEURACODE | AI Python Lab",
     page_icon="⚡",
     layout="wide"
 )
@@ -21,14 +21,21 @@ PAGES = [
     "Chat History"
 ]
 
+SIDEBAR_OPTIONS = {
+    "🏠 Home": "Home",
+    "💻 Code Generator": "Code Generator",
+    "🐞 Code Debugger": "Code Debugger",
+    "📖 Code Explainer": "Code Explainer",
+    "🤖 Chat Assistant": "Chat Assistant",
+    "📚 Chat History": "Chat History"
+}
+
 # ==================================================
 # SESSION STATE
 # ==================================================
 
 defaults = {
     "current_page": "Home",
-    "sidebar_page": "Home",
-    "pending_page": None,
     "chat_history": [],
     "last_response": "",
     "last_input": "",
@@ -40,61 +47,114 @@ for key, value in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-# Process navigation before creating sidebar radio
-if st.session_state.pending_page is not None:
-    st.session_state.sidebar_page = st.session_state.pending_page
-    st.session_state.current_page = st.session_state.pending_page
-    st.session_state.pending_page = None
+if "sidebar_navigation" not in st.session_state:
+    st.session_state.sidebar_navigation = "🏠 Home"
 
 
 def navigate_to(target):
-    st.session_state.pending_page = target
+    st.session_state.current_page = target
+
+    matching_label = next(
+        label for label, page in SIDEBAR_OPTIONS.items()
+        if page == target
+    )
+
+    st.session_state.sidebar_navigation = matching_label
+
+
+def sync_sidebar_page():
+    selected = st.session_state.sidebar_navigation
+    st.session_state.current_page = SIDEBAR_OPTIONS[selected]
 
 
 # ==================================================
 # CUSTOM CSS
 # ==================================================
 
-st.markdown("""
+st.html("""
 <style>
+
 .stApp {
-    background: linear-gradient(135deg,#080D1C,#11152C,#17112D);
+    background:
+        radial-gradient(ellipse at 10% 10%, #29205B 0%, transparent 38%),
+        radial-gradient(ellipse at 90% 80%, #103B54 0%, transparent 35%),
+        linear-gradient(135deg, #080D1C, #11152C 55%, #17112D);
     color: #F4F5FF;
 }
 
 .block-container {
     padding-top: 2rem;
-    padding-bottom: 3rem;
+    padding-bottom: 2rem;
+    max-width: 1250px;
 }
 
-h1,h2,h3 {
-    color: white !important;
+h1, h2, h3 {
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
 }
 
-p,label,li {
+p, label, li {
     color: #CBD2ED;
 }
 
+/* SIDEBAR */
+
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg,#10172D,#211638);
-    border-right: 1px solid #34365F;
+    background: linear-gradient(180deg, #10172D, #211638);
+    border-right: 1px solid #484477;
 }
 
+/* BUTTONS */
+
 .stButton > button {
-    background: linear-gradient(90deg,#7547FF,#00B8D9);
+    background: linear-gradient(100deg, #7547FF, #00AFCB);
     color: white;
-    border: none;
+    border: 1px solid transparent;
     border-radius: 12px;
-    padding: 0.65rem 1rem;
     font-weight: 700;
     transition: all 0.25s ease;
 }
 
 .stButton > button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 7px 22px #7547FF66;
+    transform: translateY(-2px);
     border: 1px solid #8EEEFF;
+    box-shadow: 0 7px 22px #7547FF66;
+    color: white;
 }
+
+/* FEATURE CARDS */
+
+.st-key-feature_generator button,
+.st-key-feature_debugger button,
+.st-key-feature_explainer button,
+.st-key-feature_assistant button {
+    min-height: 165px;
+    width: 100%;
+    white-space: pre-wrap;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 22px;
+    line-height: 1.8;
+    font-size: 15px;
+    border-radius: 18px;
+    border: 1px solid #514B85;
+    background: linear-gradient(145deg, #20294A, #2A1E49);
+    box-shadow: 0 5px 22px #00000040;
+}
+
+.st-key-feature_generator button:hover,
+.st-key-feature_debugger button:hover,
+.st-key-feature_explainer button:hover,
+.st-key-feature_assistant button:hover {
+    background: linear-gradient(135deg, #34245F, #123E58);
+    border: 1px solid #22D3EE;
+    box-shadow: 0 10px 30px #7547FF55;
+    transform: translateY(-5px);
+}
+
+/* INPUTS */
 
 div[data-testid="stTextArea"] textarea,
 div[data-testid="stTextInput"] input {
@@ -104,47 +164,12 @@ div[data-testid="stTextInput"] input {
     border-radius: 10px;
 }
 
-.feature-card {
-    background: linear-gradient(145deg,#1A2340,#211A3D);
-    border: 1px solid #484477;
-    border-radius: 18px;
-    padding: 22px;
-    min-height: 155px;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 20px #00000033;
-    margin-bottom: 12px;
+div[data-testid="stTextArea"] textarea:focus {
+    border: 1px solid #22D3EE;
+    box-shadow: 0 0 10px #22D3EE44;
 }
 
-.feature-card:hover {
-    transform: translateY(-6px);
-    border-color: #00D5FF;
-    box-shadow: 0 10px 28px #7547FF44;
-}
-
-.feature-icon {
-    font-size: 34px;
-}
-
-.feature-title {
-    font-size: 20px;
-    font-weight: 800;
-    color: white;
-    margin-top: 10px;
-}
-
-.feature-description {
-    font-size: 14px;
-    color: #BFC9E8;
-    margin-top: 8px;
-}
-
-.brand-banner {
-    background: linear-gradient(110deg,#30205B,#123B59);
-    border: 1px solid #55518B;
-    padding: 25px;
-    border-radius: 18px;
-    margin-bottom: 25px;
-}
+/* SIDEBAR RADIO */
 
 div[role="radiogroup"] label {
     background: #1A2340;
@@ -152,7 +177,6 @@ div[role="radiogroup"] label {
     border-radius: 10px;
     padding: 9px 12px;
     margin-bottom: 7px;
-    transition: 0.2s ease;
 }
 
 div[role="radiogroup"] label:hover {
@@ -160,12 +184,90 @@ div[role="radiogroup"] label:hover {
     background: #29234A;
 }
 
+/* DIVIDERS */
+
 hr {
     border-color: #34365F;
 }
-</style>
-""", unsafe_allow_html=True)
 
+/* HERO */
+
+.hero-section {
+    background:
+        radial-gradient(circle at 90% 10%, #5540A855, transparent 35%),
+        linear-gradient(115deg, #211844, #142D4C 65%, #153E55);
+    border: 1px solid #6658A2;
+    border-radius: 24px;
+    padding: 38px 35px;
+    margin-bottom: 28px;
+    box-shadow: 0 12px 40px #00000055;
+}
+
+.hero-label {
+    color: #67E8F9;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 3px;
+}
+
+.hero-title {
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.15;
+    font-weight: 900;
+    margin-top: 16px;
+    background: linear-gradient(90deg, #FFFFFF, #A78BFA, #67E8F9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-tagline {
+    font-size: 20px;
+    font-weight: 700;
+    color: #67E8F9;
+    margin-top: 14px;
+}
+
+.hero-description {
+    font-size: 15px;
+    line-height: 1.8;
+    color: #D3D9F2;
+    max-width: 700px;
+    margin-top: 15px;
+}
+
+.section-label {
+    color: #A78BFA;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+}
+
+/* FOOTER */
+
+.footer {
+    text-align: center;
+    padding: 25px 10px;
+    margin-top: 30px;
+    border-top: 1px solid #34365F;
+}
+
+.footer-brand {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: #A78BFA;
+}
+
+.footer-tagline {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #67E8F9;
+    margin-top: 7px;
+}
+
+</style>
+""")
 
 # ==================================================
 # GROQ AI MODEL
@@ -272,8 +374,9 @@ Give a helpful, clear answer with examples where useful.
 
 with st.sidebar:
 
-    st.markdown("""
+    st.html("""
     <div style="text-align:center;padding:15px 2px;">
+
         <h2 style="
             font-size:27px;
             font-weight:900;
@@ -283,45 +386,28 @@ with st.sidebar:
             -webkit-text-fill-color:transparent;">
             ✦ NEURACODE ✦
         </h2>
+
         <p style="color:#67E8F9;font-size:10px;letter-spacing:2px;">
             INTELLIGENT CODING STUDIO
         </p>
+
         <p style="color:#B8C3E8;font-size:11px;">
             Think • Build • Innovate
         </p>
+
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
     st.divider()
 
     st.markdown("### 🚀 WORKSPACE")
 
-    sidebar_options = {
-        "🏠 Home": "Home",
-        "💻 Code Generator": "Code Generator",
-        "🐞 Code Debugger": "Code Debugger",
-        "📖 Code Explainer": "Code Explainer",
-        "🤖 Chat Assistant": "Chat Assistant",
-        "📚 Chat History": "Chat History"
-    }
-
-    option_labels = list(sidebar_options.keys())
-
-    selected_option = st.radio(
+    st.radio(
         "Choose your workspace",
-        option_labels,
-        index=option_labels.index(
-            next(
-                (label for label, value in sidebar_options.items()
-                 if value == st.session_state.current_page),
-                "🏠 Home"
-            )
-        ),
-        key="sidebar_navigation"
+        list(SIDEBAR_OPTIONS.keys()),
+        key="sidebar_navigation",
+        on_change=sync_sidebar_page
     )
-
-    selected_page = sidebar_options[selected_option]
-    st.session_state.current_page = selected_page
 
     st.divider()
 
@@ -332,7 +418,7 @@ with st.sidebar:
     st.markdown("🎨 Streamlit")
 
     st.divider()
-    st.caption("NEURACODE • Version 1.0")
+    st.caption("NEURACODE • Version 2.0")
 
 
 page = st.session_state.current_page
@@ -344,98 +430,106 @@ page = st.session_state.current_page
 
 if page == "Home":
 
-    st.markdown("""
-    <div class="brand-banner">
-        <h1>⚡ Welcome to NEURACODE</h1>
-        <h3 style="color:#67E8F9 !important;">
-            Think Smart. Code Smarter.
-        </h3>
-        <p>
-            Your intelligent AI-powered Python development studio.
-            Generate smarter code, debug errors and understand
-            programming with your personal AI assistant.
-        </p>
+    st.html("""
+    <div class="hero-section">
+
+        <div class="hero-label">
+            ✦ INTELLIGENT CODING STUDIO
+        </div>
+
+        <div class="hero-title">
+               NEURACODE
+        </div>
+        <div class="hero-tagline">
+            Build. Debug. Understand. Create.
+        </div>
+
+        <div class="hero-description">
+            Your ideas deserve intelligent code.
+            Generate Python programs, debug errors,
+            understand complex logic and explore programming
+            with your AI-powered coding companion.
+        </div>
+
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
-    st.markdown("## 🚀 Explore Your Workspace")
-    st.write("Choose a tool and start building smarter Python solutions.")
+    st.html("""
+    <div class="section-label">
+        YOUR DEVELOPMENT WORKSPACE
+    </div>
+    """)
 
-    col1, col2 = st.columns(2)
+    st.markdown("## 🚀 Explore Your Tools")
+    st.write("Select a workspace to start creating with NEURACODE.")
+
+    col1, col2 = st.columns(2, gap="large")
 
     with col1:
-
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">💻</div>
-            <div class="feature-title">Code Generator</div>
-            <div class="feature-description">
-                Transform your ideas into clean Python code with AI.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("🚀 Open Code Generator", key="home_gen",
-                     use_container_width=True):
-            navigate_to("Code Generator")
-            st.rerun()
+        with st.container(key="feature_generator"):
+            st.button(
+                "💻  CODE GENERATOR\n\n"
+                "Transform your ideas into clean Python programs.\n\n"
+                "START GENERATING  →",
+                key="card_gen",
+                use_container_width=True,
+                on_click=navigate_to,
+                args=("Code Generator",)
+            )
 
     with col2:
+        with st.container(key="feature_debugger"):
+            st.button(
+                "🐞  CODE DEBUGGER\n\n"
+                "Detect errors, understand issues and fix your code.\n\n"
+                "START DEBUGGING  →",
+                key="card_debug",
+                use_container_width=True,
+                on_click=navigate_to,
+                args=("Code Debugger",)
+            )
 
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">🐞</div>
-            <div class="feature-title">Code Debugger</div>
-            <div class="feature-description">
-                Detect errors, understand issues and fix your code.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("🔧 Open Code Debugger", key="home_debug",
-                     use_container_width=True):
-            navigate_to("Code Debugger")
-            st.rerun()
-
-    col3, col4 = st.columns(2)
+    col3, col4 = st.columns(2, gap="large")
 
     with col3:
-
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">📖</div>
-            <div class="feature-title">Code Explainer</div>
-            <div class="feature-description">
-                Understand complex Python code step by step.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("📚 Open Code Explainer", key="home_explain",
-                     use_container_width=True):
-            navigate_to("Code Explainer")
-            st.rerun()
+        with st.container(key="feature_explainer"):
+            st.button(
+                "📖  CODE EXPLAINER\n\n"
+                "Understand Python code step by step with AI.\n\n"
+                "EXPLORE CODE  →",
+                key="card_explain",
+                use_container_width=True,
+                on_click=navigate_to,
+                args=("Code Explainer",)
+            )
 
     with col4:
+        with st.container(key="feature_assistant"):
+            st.button(
+                "🤖  AI CHAT ASSISTANT\n\n"
+                "Ask questions, learn concepts and get coding help.\n\n"
+                "START CHATTING  →",
+                key="card_chat",
+                use_container_width=True,
+                on_click=navigate_to,
+                args=("Chat Assistant",)
+            )
 
-        st.markdown("""
-        <div class="feature-card">
-            <div class="feature-icon">🤖</div>
-            <div class="feature-title">AI Chat Assistant</div>
-            <div class="feature-description">
-                Ask questions and explore programming concepts.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("---")
 
-        if st.button("💬 Open AI Assistant", key="home_chat",
-                     use_container_width=True):
-            navigate_to("Chat Assistant")
-            st.rerun()
+    col_a, col_b, col_c = st.columns(3)
 
-    st.divider()
-    st.markdown("### ✨ Your Ideas. Our Intelligence.")
-    st.caption("Start creating something amazing with NEURACODE.")
+    with col_a:
+        st.markdown("### ⚡ Smart Coding")
+        st.caption("Generate Python solutions faster.")
+
+    with col_b:
+        st.markdown("### 🧠 Learn Better")
+        st.caption("Understand code with AI guidance.")
+
+    with col_c:
+        st.markdown("### 🚀 Build More")
+        st.caption("Turn your ideas into working programs.")
 
 
 # ==================================================
@@ -454,8 +548,11 @@ elif page == "Code Generator":
         key="generator_input"
     )
 
-    if st.button("⚡ Generate Python Code", key="generate_button",
-                 use_container_width=True):
+    if st.button(
+        "⚡ Generate Python Code",
+        key="generate_button",
+        use_container_width=True
+    ):
 
         if requirement.strip():
 
@@ -476,7 +573,10 @@ Present the code in a Python code block."""
         else:
             st.warning("Please enter your requirement.")
 
-    if st.session_state.last_type == "Code Generator" and st.session_state.last_response:
+    if (
+        st.session_state.last_type == "Code Generator"
+        and st.session_state.last_response
+    ):
 
         st.markdown("### ✨ Generated Solution")
         st.markdown(st.session_state.last_response)
@@ -507,8 +607,11 @@ elif page == "Code Debugger":
         key="debugger_input"
     )
 
-    if st.button("🔍 Debug My Code", key="debug_button",
-                 use_container_width=True):
+    if st.button(
+        "🔍 Debug My Code",
+        key="debug_button",
+        use_container_width=True
+    ):
 
         if code.strip():
 
@@ -529,7 +632,10 @@ and provide corrected code."""
         else:
             st.warning("Please paste your Python code.")
 
-    if st.session_state.last_type == "Code Debugger" and st.session_state.last_response:
+    if (
+        st.session_state.last_type == "Code Debugger"
+        and st.session_state.last_response
+    ):
 
         st.markdown("### 🛠️ Debugging Results")
         st.markdown(st.session_state.last_response)
@@ -553,8 +659,11 @@ elif page == "Code Explainer":
         key="explainer_input"
     )
 
-    if st.button("🧠 Explain My Code", key="explain_button",
-                 use_container_width=True):
+    if st.button(
+        "🧠 Explain My Code",
+        key="explain_button",
+        use_container_width=True
+    ):
 
         if code.strip():
 
@@ -572,7 +681,10 @@ Explain the important lines and provide a practical example.
         else:
             st.warning("Please enter code.")
 
-    if st.session_state.last_type == "Code Explainer" and st.session_state.last_response:
+    if (
+        st.session_state.last_type == "Code Explainer"
+        and st.session_state.last_response
+    ):
 
         st.markdown("### 📚 Code Explanation")
         st.markdown(st.session_state.last_response)
@@ -596,8 +708,11 @@ elif page == "Chat Assistant":
         key="chat_input"
     )
 
-    if st.button("💬 Ask NEURACODE", key="ask_button",
-                 use_container_width=True):
+    if st.button(
+        "💬 Ask NEURACODE",
+        key="ask_button",
+        use_container_width=True
+    ):
 
         if question.strip():
 
@@ -615,7 +730,10 @@ Answer this question clearly with practical examples:
         else:
             st.warning("Please enter a question.")
 
-    if st.session_state.last_type == "Chat Assistant" and st.session_state.last_response:
+    if (
+        st.session_state.last_type == "Chat Assistant"
+        and st.session_state.last_response
+    ):
 
         st.markdown("### 🤖 AI Response")
         st.markdown(st.session_state.last_response)
@@ -636,7 +754,9 @@ elif page == "Chat History":
 
         for item in reversed(st.session_state.chat_history):
 
-            with st.expander(f"✨ {item['type']} — {item['input'][:60]}"):
+            with st.expander(
+                f"✨ {item['type']} — {item['input'][:60]}"
+            ):
 
                 st.markdown("**Your Input**")
                 st.code(item["input"])
@@ -644,29 +764,45 @@ elif page == "Chat History":
                 st.markdown("**AI Response**")
                 st.markdown(item["output"])
 
-        if st.button("🗑️ Clear Chat History", key="clear_history"):
+        if st.button(
+            "🗑️ Clear Chat History",
+            key="clear_history"
+        ):
 
             st.session_state.chat_history = []
             st.session_state.last_response = ""
             st.session_state.last_type = ""
+            st.session_state.last_input = ""
             st.rerun()
 
     else:
-        st.info("Your chat history will appear here after your first interaction.")
+        st.info(
+            "Your chat history will appear here after your first interaction."
+        )
 
 
 # ==================================================
 # FOOTER
 # ==================================================
 
-st.markdown("""
-<div style="text-align:center;padding:15px;">
-    <h3 style="color:#A78BFA;">✦ NEURACODE ✦</h3>
-    <p style="color:#67E8F9;letter-spacing:2px;font-size:10px;">
+st.html("""
+<div class="footer">
+
+    <div class="footer-brand">
+        ✦ NEURACODE ✦
+    </div>
+
+    <div class="footer-tagline">
         INTELLIGENT CODING STUDIO
-    </p>
-    <p style="color:#B8C3E8;font-size:11px;">
+    </div>
+
+    <p style="color:#B8C3E8;font-size:12px;margin-top:12px;">
         Think • Build • Innovate
     </p>
+
+    <p style="color:#747D9F;font-size:10px;">
+        Think Smart. Code Smarter.
+    </p>
+
 </div>
-""", unsafe_allow_html=True)
+""")
