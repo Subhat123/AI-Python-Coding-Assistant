@@ -3,7 +3,7 @@ import streamlit as st
 from langchain_groq import ChatGroq
 
 # ==================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ==================================================
 
 st.set_page_config(
@@ -12,6 +12,45 @@ st.set_page_config(
     layout="wide"
 )
 
+PAGES = [
+    "Home",
+    "Code Generator",
+    "Code Debugger",
+    "Code Explainer",
+    "Chat Assistant",
+    "Chat History"
+]
+
+# ==================================================
+# SESSION STATE
+# ==================================================
+
+defaults = {
+    "current_page": "Home",
+    "sidebar_page": "Home",
+    "pending_page": None,
+    "chat_history": [],
+    "last_response": "",
+    "last_input": "",
+    "last_type": "",
+    "followup_count": 0
+}
+
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+# Process navigation before creating sidebar radio
+if st.session_state.pending_page is not None:
+    st.session_state.sidebar_page = st.session_state.pending_page
+    st.session_state.current_page = st.session_state.pending_page
+    st.session_state.pending_page = None
+
+
+def navigate_to(target):
+    st.session_state.pending_page = target
+
+
 # ==================================================
 # CUSTOM CSS
 # ==================================================
@@ -19,7 +58,7 @@ st.set_page_config(
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(135deg, #080D1C, #11152C, #17112D);
+    background: linear-gradient(135deg,#080D1C,#11152C,#17112D);
     color: #F4F5FF;
 }
 
@@ -28,25 +67,21 @@ st.markdown("""
     padding-bottom: 3rem;
 }
 
-h1, h2, h3 {
-    color: #FFFFFF !important;
+h1,h2,h3 {
+    color: white !important;
 }
 
-p, label, li {
+p,label,li {
     color: #CBD2ED;
 }
 
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #10172D, #211638);
+    background: linear-gradient(180deg,#10172D,#211638);
     border-right: 1px solid #34365F;
 }
 
-section[data-testid="stSidebar"] * {
-    color: #EEEEFF;
-}
-
 .stButton > button {
-    background: linear-gradient(90deg, #7547FF, #00B8D9);
+    background: linear-gradient(90deg,#7547FF,#00B8D9);
     color: white;
     border: none;
     border-radius: 12px;
@@ -70,7 +105,7 @@ div[data-testid="stTextInput"] input {
 }
 
 .feature-card {
-    background: linear-gradient(145deg, #1A2340, #211A3D);
+    background: linear-gradient(145deg,#1A2340,#211A3D);
     border: 1px solid #484477;
     border-radius: 18px;
     padding: 22px;
@@ -93,7 +128,7 @@ div[data-testid="stTextInput"] input {
 .feature-title {
     font-size: 20px;
     font-weight: 800;
-    color: #FFFFFF;
+    color: white;
     margin-top: 10px;
 }
 
@@ -104,19 +139,25 @@ div[data-testid="stTextInput"] input {
 }
 
 .brand-banner {
-    background: linear-gradient(110deg, #30205B, #123B59);
+    background: linear-gradient(110deg,#30205B,#123B59);
     border: 1px solid #55518B;
     padding: 25px;
     border-radius: 18px;
     margin-bottom: 25px;
 }
 
-.followup-card {
-    background: #171F3B;
-    border: 1px solid #3D5684;
-    border-radius: 12px;
-    padding: 13px;
-    margin: 7px 0;
+div[role="radiogroup"] label {
+    background: #1A2340;
+    border: 1px solid #484477;
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-bottom: 7px;
+    transition: 0.2s ease;
+}
+
+div[role="radiogroup"] label:hover {
+    border-color: #22D3EE;
+    background: #29234A;
 }
 
 hr {
@@ -124,33 +165,6 @@ hr {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-# ==================================================
-# SESSION STATE
-# ==================================================
-
-if "navigation" not in st.session_state:
-    st.session_state.navigation = "Home"
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-if "last_response" not in st.session_state:
-    st.session_state.last_response = ""
-
-if "last_input" not in st.session_state:
-    st.session_state.last_input = ""
-
-if "last_type" not in st.session_state:
-    st.session_state.last_type = ""
-
-if "followup_prompt" not in st.session_state:
-    st.session_state.followup_prompt = ""
-
-
-def navigate_to(target):
-    st.session_state.navigation = target
 
 
 # ==================================================
@@ -193,6 +207,7 @@ def save_result(tool_name, user_input, response):
     st.session_state.last_response = response
     st.session_state.last_input = user_input
     st.session_state.last_type = tool_name
+    st.session_state.followup_count = 0
 
     st.session_state.chat_history.append({
         "type": tool_name,
@@ -208,8 +223,8 @@ def save_result(tool_name, user_input, response):
 def show_followups():
 
     st.markdown("---")
-    st.markdown("### ✨ Continue Your Journey")
-    st.caption("Explore more with these AI-powered follow-up actions.")
+    st.markdown("### ✨ What's Next?")
+    st.caption("Keep exploring with NEURACODE AI.")
 
     suggestions = [
         "Explain this in a beginner-friendly way",
@@ -221,14 +236,12 @@ def show_followups():
 
         if st.button(
             f"💡 {suggestion}",
-            key=f"followup_{st.session_state.last_type}_{i}",
+            key=f"followup_{st.session_state.last_type}_{st.session_state.followup_count}_{i}",
             use_container_width=True
         ):
 
-            with st.spinner("NEURACODE AI is working..."):
-
-                result = generate_response(
-                    f"""Previous task:
+            prompt = f"""
+Previous task:
 {st.session_state.last_input}
 
 Previous AI response:
@@ -237,8 +250,11 @@ Previous AI response:
 Follow-up request:
 {suggestion}
 
-Give a helpful, clear answer."""
-                )
+Give a helpful, clear answer with examples where useful.
+"""
+
+            with st.spinner("NEURACODE AI is working..."):
+                result = generate_response(prompt)
 
             save_result(
                 st.session_state.last_type,
@@ -246,6 +262,7 @@ Give a helpful, clear answer."""
                 result
             )
 
+            st.session_state.followup_count += 1
             st.rerun()
 
 
@@ -257,45 +274,54 @@ with st.sidebar:
 
     st.markdown("""
     <div style="text-align:center;padding:15px 2px;">
-        <div style="
-            font-size:29px;
+        <h2 style="
+            font-size:27px;
             font-weight:900;
             letter-spacing:2px;
             background:linear-gradient(90deg,#A78BFA,#22D3EE,#F0ABFC);
             -webkit-background-clip:text;
             -webkit-text-fill-color:transparent;">
             ✦ NEURACODE ✦
-        </div>
-        <div style="
-            color:#67E8F9;
-            font-size:10px;
-            letter-spacing:2px;
-            margin-top:8px;">
+        </h2>
+        <p style="color:#67E8F9;font-size:10px;letter-spacing:2px;">
             INTELLIGENT CODING STUDIO
-        </div>
-        <div style="
-            color:#B8C3E8;
-            font-size:11px;
-            margin-top:8px;">
+        </p>
+        <p style="color:#B8C3E8;font-size:11px;">
             Think • Build • Innovate
-        </div>
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
     st.divider()
 
-    page = st.radio(
-        "WORKSPACE NAVIGATION",
-        [
-            "Home",
-            "Code Generator",
-            "Code Debugger",
-            "Code Explainer",
-            "Chat Assistant",
-            "Chat History"
-        ],
-        key="navigation"
+    st.markdown("### 🚀 WORKSPACE")
+
+    sidebar_options = {
+        "🏠 Home": "Home",
+        "💻 Code Generator": "Code Generator",
+        "🐞 Code Debugger": "Code Debugger",
+        "📖 Code Explainer": "Code Explainer",
+        "🤖 Chat Assistant": "Chat Assistant",
+        "📚 Chat History": "Chat History"
+    }
+
+    option_labels = list(sidebar_options.keys())
+
+    selected_option = st.radio(
+        "Choose your workspace",
+        option_labels,
+        index=option_labels.index(
+            next(
+                (label for label, value in sidebar_options.items()
+                 if value == st.session_state.current_page),
+                "🏠 Home"
+            )
+        ),
+        key="sidebar_navigation"
     )
+
+    selected_page = sidebar_options[selected_option]
+    st.session_state.current_page = selected_page
 
     st.divider()
 
@@ -306,8 +332,10 @@ with st.sidebar:
     st.markdown("🎨 Streamlit")
 
     st.divider()
-
     st.caption("NEURACODE • Version 1.0")
+
+
+page = st.session_state.current_page
 
 
 # ==================================================
@@ -331,7 +359,6 @@ if page == "Home":
     """, unsafe_allow_html=True)
 
     st.markdown("## 🚀 Explore Your Workspace")
-
     st.write("Choose a tool and start building smarter Python solutions.")
 
     col1, col2 = st.columns(2)
@@ -348,7 +375,8 @@ if page == "Home":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("🚀 Open Code Generator", key="home_gen", use_container_width=True):
+        if st.button("🚀 Open Code Generator", key="home_gen",
+                     use_container_width=True):
             navigate_to("Code Generator")
             st.rerun()
 
@@ -364,7 +392,8 @@ if page == "Home":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("🔧 Open Code Debugger", key="home_debug", use_container_width=True):
+        if st.button("🔧 Open Code Debugger", key="home_debug",
+                     use_container_width=True):
             navigate_to("Code Debugger")
             st.rerun()
 
@@ -382,7 +411,8 @@ if page == "Home":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("📚 Open Code Explainer", key="home_explain", use_container_width=True):
+        if st.button("📚 Open Code Explainer", key="home_explain",
+                     use_container_width=True):
             navigate_to("Code Explainer")
             st.rerun()
 
@@ -398,12 +428,12 @@ if page == "Home":
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("💬 Open AI Assistant", key="home_chat", use_container_width=True):
+        if st.button("💬 Open AI Assistant", key="home_chat",
+                     use_container_width=True):
             navigate_to("Chat Assistant")
             st.rerun()
 
     st.divider()
-
     st.markdown("### ✨ Your Ideas. Our Intelligence.")
     st.caption("Start creating something amazing with NEURACODE.")
 
@@ -420,10 +450,12 @@ elif page == "Code Generator":
     requirement = st.text_area(
         "What do you want to build?",
         placeholder="Example: Create a Python calculator using functions...",
-        height=150
+        height=150,
+        key="generator_input"
     )
 
-    if st.button("⚡ Generate Python Code", use_container_width=True):
+    if st.button("⚡ Generate Python Code", key="generate_button",
+                 use_container_width=True):
 
         if requirement.strip():
 
@@ -452,7 +484,8 @@ Present the code in a Python code block."""
         st.download_button(
             "📥 Download Generated Code",
             st.session_state.last_response,
-            file_name="generated_code.py"
+            file_name="generated_code.py",
+            key="download_generated"
         )
 
         show_followups()
@@ -470,10 +503,12 @@ elif page == "Code Debugger":
     code = st.text_area(
         "Paste your Python code",
         placeholder="Paste your code here...",
-        height=220
+        height=220,
+        key="debugger_input"
     )
 
-    if st.button("🔍 Debug My Code", use_container_width=True):
+    if st.button("🔍 Debug My Code", key="debug_button",
+                 use_container_width=True):
 
         if code.strip():
 
@@ -514,10 +549,12 @@ elif page == "Code Explainer":
     code = st.text_area(
         "Enter Python code to explain",
         placeholder="Paste Python code here...",
-        height=200
+        height=200,
+        key="explainer_input"
     )
 
-    if st.button("🧠 Explain My Code", use_container_width=True):
+    if st.button("🧠 Explain My Code", key="explain_button",
+                 use_container_width=True):
 
         if code.strip():
 
@@ -555,10 +592,12 @@ elif page == "Chat Assistant":
     question = st.text_area(
         "Ask your question",
         placeholder="Example: What is a Python function?",
-        height=120
+        height=120,
+        key="chat_input"
     )
 
-    if st.button("💬 Ask NEURACODE", use_container_width=True):
+    if st.button("💬 Ask NEURACODE", key="ask_button",
+                 use_container_width=True):
 
         if question.strip():
 
@@ -595,11 +634,9 @@ elif page == "Chat History":
 
     if st.session_state.chat_history:
 
-        for index, item in enumerate(reversed(st.session_state.chat_history)):
+        for item in reversed(st.session_state.chat_history):
 
-            with st.expander(
-                f"✨ {item['type']} — {item['input'][:60]}"
-            ):
+            with st.expander(f"✨ {item['type']} — {item['input'][:60]}"):
 
                 st.markdown("**Your Input**")
                 st.code(item["input"])
@@ -607,7 +644,7 @@ elif page == "Chat History":
                 st.markdown("**AI Response**")
                 st.markdown(item["output"])
 
-        if st.button("🗑️ Clear Chat History"):
+        if st.button("🗑️ Clear Chat History", key="clear_history"):
 
             st.session_state.chat_history = []
             st.session_state.last_response = ""
@@ -622,21 +659,14 @@ elif page == "Chat History":
 # FOOTER
 # ==================================================
 
-st.markdown("---")
-
 st.markdown("""
 <div style="text-align:center;padding:15px;">
-    <h2 style="
-        background:linear-gradient(90deg,#A78BFA,#22D3EE);
-        -webkit-background-clip:text;
-        -webkit-text-fill-color:transparent;">
-        ✦ NEURACODE ✦
-    </h2>
-    <p style="color:#A5B4FC;">
-        Think Smart. Code Smarter.
+    <h3 style="color:#A78BFA;">✦ NEURACODE ✦</h3>
+    <p style="color:#67E8F9;letter-spacing:2px;font-size:10px;">
+        INTELLIGENT CODING STUDIO
     </p>
-    <p style="color:#8993B5;font-size:12px;">
-        Powered by Python • LangChain • Groq AI • Streamlit
+    <p style="color:#B8C3E8;font-size:11px;">
+        Think • Build • Innovate
     </p>
 </div>
 """, unsafe_allow_html=True)
