@@ -1,7 +1,7 @@
 import time
 import streamlit as st
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
@@ -11,10 +11,13 @@ st.set_page_config(
     layout="wide"
 )
 
+# Get Groq API Key from Streamlit Secrets
+api_key = st.secrets.get("GROQ_API_KEY", "")
+
 # Initialize Chat History
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-    
+
 # Sidebar
 st.sidebar.title("🐍 AI Coding Assistant")
 st.sidebar.write("Your personal AI developer")
@@ -30,17 +33,15 @@ page = st.sidebar.radio(
     ]
 )
 
-# Main page
-api_key = st.sidebar.text_input(
-    "Gemini API Key",
-    type="password"
-)
 
 def generate_code(requirement):
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-3.8-flash",
-        google_api_key=api_key,
+    if not api_key:
+        raise ValueError("Groq API key is missing. Add it in Streamlit Secrets.")
+
+    llm = ChatGroq(
+        model="openai/gpt-oss-120b",
+        groq_api_key=api_key,
         temperature=0.2
     )
 
@@ -76,11 +77,18 @@ def generate_code(requirement):
         except Exception as e:
             error_message = str(e)
 
-            if ("503" in error_message or "UNAVAILABLE" in error_message) and attempt < 2:
+            if (
+                ("503" in error_message or
+                 "429" in error_message or
+                 "UNAVAILABLE" in error_message)
+                and attempt < 2
+            ):
                 time.sleep(2 ** (attempt + 1))
             else:
                 raise
-    
+
+
+# Main page
 st.title("🐍 AI Python Coding Assistant")
 st.write("Welcome! Build Python programs with the help of AI.")
 
@@ -100,7 +108,7 @@ if page == "Code Generator":
     if st.button("🚀 Generate Code"):
 
         if not api_key:
-            st.warning("Enter your Gemini API key.")
+            st.warning("Groq API key is missing.")
 
         elif not requirement.strip():
             st.warning("Enter your requirement.")
@@ -113,12 +121,12 @@ if page == "Code Generator":
 
                 st.success("Code generated successfully!")
                 st.markdown(response)
-                
+
                 st.session_state.chat_history.append({
-                 "feature": "Code Generator",
-                 "question": requirement,
-                 "answer": response
-        })
+                    "feature": "Code Generator",
+                    "question": requirement,
+                    "answer": response
+                })
 
                 st.download_button(
                     "Download Generated Code",
@@ -128,6 +136,7 @@ if page == "Code Generator":
 
             except Exception as e:
                 st.error(str(e))
+
 
 elif page == "Code Debugger":
 
@@ -139,7 +148,7 @@ elif page == "Code Debugger":
     if st.button("Fix My Code"):
 
         if not api_key:
-            st.warning("Enter your Gemini API key.")
+            st.warning("Groq API key is missing.")
 
         elif not code.strip():
             st.warning("Paste your Python code.")
@@ -174,6 +183,7 @@ elif page == "Code Debugger":
             except Exception as e:
                 st.error(str(e))
 
+
 elif page == "Code Explainer":
 
     st.header("📖 AI Code Explainer")
@@ -183,7 +193,7 @@ elif page == "Code Explainer":
     if st.button("Explain Code"):
 
         if not api_key:
-            st.warning("Enter your Gemini API key.")
+            st.warning("Groq API key is missing.")
 
         elif not code.strip():
             st.warning("Paste Python code.")
@@ -214,6 +224,7 @@ elif page == "Code Explainer":
             except Exception as e:
                 st.error(str(e))
 
+
 elif page == "Chat Assistant":
 
     st.header("💬 AI Chat Assistant")
@@ -223,7 +234,7 @@ elif page == "Chat Assistant":
     if st.button("Send"):
 
         if not api_key:
-            st.warning("Enter your Gemini API key.")
+            st.warning("Groq API key is missing.")
 
         elif not question.strip():
             st.warning("Enter your question.")
@@ -248,15 +259,16 @@ elif page == "Chat Assistant":
             except Exception as e:
                 st.error(str(e))
 
+
 elif page == "Chat History":
 
     st.header("🕘 Chat History")
-    
+
     if st.session_state.chat_history:
 
-     if st.button("🗑️ Clear Chat History"):
-        st.session_state.chat_history = []
-        st.rerun()
+        if st.button("🗑️ Clear Chat History"):
+            st.session_state.chat_history = []
+            st.rerun()
 
     if st.session_state.chat_history:
 
@@ -275,7 +287,9 @@ elif page == "Chat History":
     else:
         st.info("No conversation history available yet.")
 
+
 st.divider()
 
-st.caption("Built with Python | Streamlit | LangChain | Google Gemini")
-
+st.caption(
+    "Built with Python | Streamlit | LangChain | Groq AI"
+)
