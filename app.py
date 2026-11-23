@@ -8,20 +8,20 @@ from langchain_groq import ChatGroq
 
 st.set_page_config(
     page_title="NEURACODE | AI Python Lab",
-    page_icon="⚡",
+    page_icon=" ",
     layout="wide"
 )
 
 SIDEBAR_OPTIONS = {
-    "🏠 Home": "Home",
-    "💻 Code Generator": "Code Generator",
-    "🐞 Code Debugger": "Code Debugger",
-    "📖 Code Explainer": "Code Explainer",
-    "🤖 Chat Assistant": "Chat Assistant",
-    "📚 Chat History": "Chat History",
-    "🧠 AI Code Reviewer": "AI Code Reviewer",
-    "⚡ Code Optimizer": "Code Optimizer",
-    "🧪 Test Case Generator": "Test Case Generator"
+    " Home": "Home",
+    " Code Generator": "Code Generator",
+    " Code Debugger": "Code Debugger",
+    " Code Explainer": "Code Explainer",
+    " Chat Assistant": "Chat Assistant",
+    " Chat History": "Chat History",
+    " AI Code Reviewer": "AI Code Reviewer",
+    " Code Optimizer": "Code Optimizer",
+    " Test Case Generator": "Test Case Generator"
 }
 
 # ==================================================
@@ -35,7 +35,7 @@ defaults = {
     "last_input": "",
     "last_type": "",
     "followup_count": 0,
-    "sidebar_navigation": "🏠 Home"
+    "sidebar_navigation": "Home"
 }
 
 for key, value in defaults.items():
@@ -622,7 +622,7 @@ elif page == "Code Debugger":
     st.caption("Find errors and improve your Python code.")
 
     code = st.text_area(
-        "Paste your Python code",
+        "Paste your code",
         placeholder="Paste your code here...",
         height=220,
         key="debugger_input"
