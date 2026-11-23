@@ -12,22 +12,16 @@ st.set_page_config(
     layout="wide"
 )
 
-PAGES = [
-    "Home",
-    "Code Generator",
-    "Code Debugger",
-    "Code Explainer",
-    "Chat Assistant",
-    "Chat History"
-]
-
 SIDEBAR_OPTIONS = {
     "🏠 Home": "Home",
     "💻 Code Generator": "Code Generator",
     "🐞 Code Debugger": "Code Debugger",
     "📖 Code Explainer": "Code Explainer",
     "🤖 Chat Assistant": "Chat Assistant",
-    "📚 Chat History": "Chat History"
+    "📚 Chat History": "Chat History",
+    "🧠 AI Code Reviewer": "AI Code Reviewer",
+    "⚡ Code Optimizer": "Code Optimizer",
+    "🧪 Test Case Generator": "Test Case Generator"
 }
 
 # ==================================================
@@ -40,23 +34,21 @@ defaults = {
     "last_response": "",
     "last_input": "",
     "last_type": "",
-    "followup_count": 0
+    "followup_count": 0,
+    "sidebar_navigation": "🏠 Home"
 }
 
 for key, value in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-if "sidebar_navigation" not in st.session_state:
-    st.session_state.sidebar_navigation = "🏠 Home"
-
 
 def navigate_to(target):
     st.session_state.current_page = target
 
     matching_label = next(
-        label for label, page in SIDEBAR_OPTIONS.items()
-        if page == target
+        label for label, page_name in SIDEBAR_OPTIONS.items()
+        if page_name == target
     )
 
     st.session_state.sidebar_navigation = matching_label
@@ -289,6 +281,10 @@ if api_key:
         )
     except Exception as e:
         st.error(f"Model initialization error: {e}")
+else:
+    st.sidebar.warning(
+        "Add GROQ_API_KEY in Streamlit Secrets to enable AI."
+    )
 
 
 def generate_response(prompt):
@@ -438,15 +434,16 @@ if page == "Home":
         </div>
 
         <div class="hero-title">
-               NEURACODE
+            NEURACODE
         </div>
+
         <div class="hero-tagline">
             Build. Debug. Understand. Create.
         </div>
 
         <div class="hero-description">
             Your ideas deserve intelligent code.
-            Generate Python programs, debug errors,
+            Generate programs, debug errors,
             understand complex logic and explore programming
             with your AI-powered coding companion.
         </div>
@@ -469,7 +466,7 @@ if page == "Home":
         with st.container(key="feature_generator"):
             st.button(
                 "💻  CODE GENERATOR\n\n"
-                "Transform your ideas into clean Python programs.\n\n"
+                "Transform your ideas into programs in multiple languages.\n\n"
                 "START GENERATING  →",
                 key="card_gen",
                 use_container_width=True,
@@ -521,7 +518,7 @@ if page == "Home":
 
     with col_a:
         st.markdown("### ⚡ Smart Coding")
-        st.caption("Generate Python solutions faster.")
+        st.caption("Generate programming solutions faster.")
 
     with col_b:
         st.markdown("### 🧠 Learn Better")
@@ -538,34 +535,50 @@ if page == "Home":
 
 elif page == "Code Generator":
 
-    st.title("💻 Code Generator")
-    st.caption("Turn your ideas into Python programs.")
+    st.title("💻 AI Code Generator")
+    st.caption("Generate programs in multiple programming languages.")
+
+    language = st.selectbox(
+        "Choose Programming Language",
+        ["Python", "Java", "C", "C++", "JavaScript"],
+        key="generator_language"
+    )
 
     requirement = st.text_area(
         "What do you want to build?",
-        placeholder="Example: Create a Python calculator using functions...",
+        placeholder="Example: Create a calculator using functions...",
         height=150,
         key="generator_input"
     )
 
     if st.button(
-        "⚡ Generate Python Code",
+        f"⚡ Generate {language} Code",
         key="generate_button",
         use_container_width=True
     ):
 
         if requirement.strip():
 
-            with st.spinner("NEURACODE is generating your solution..."):
+            with st.spinner(f"NEURACODE is generating {language} code..."):
 
                 result = generate_response(
-                    f"""You are an expert Python developer.
+                    f"""You are an expert {language} developer.
 
-Generate clean and working Python code for this requirement:
+Generate clean and working {language} code
+for this requirement:
+
 {requirement}
 
-Include comments and a short explanation.
-Present the code in a Python code block."""
+Requirements:
+1. Use only {language}.
+2. Include meaningful comments.
+3. Follow proper coding standards.
+4. Provide complete executable code.
+5. Include a beginner-friendly explanation.
+6. Put the code inside a correctly labelled
+   {language} code block.
+7. Do not mix other programming languages.
+"""
                 )
 
             save_result("Code Generator", requirement, result)
@@ -581,10 +594,18 @@ Present the code in a Python code block."""
         st.markdown("### ✨ Generated Solution")
         st.markdown(st.session_state.last_response)
 
+        extensions = {
+            "Python": "py",
+            "Java": "java",
+            "C": "c",
+            "C++": "cpp",
+            "JavaScript": "js"
+        }
+
         st.download_button(
             "📥 Download Generated Code",
             st.session_state.last_response,
-            file_name="generated_code.py",
+            file_name=f"generated_code.{extensions[language]}",
             key="download_generated"
         )
 
@@ -719,7 +740,7 @@ elif page == "Chat Assistant":
             with st.spinner("NEURACODE is thinking..."):
 
                 result = generate_response(
-                    f"""You are a friendly Python programming tutor.
+                    f"""You are a friendly programming tutor.
 Answer this question clearly with practical examples:
 
 {question}"""
@@ -736,6 +757,205 @@ Answer this question clearly with practical examples:
     ):
 
         st.markdown("### 🤖 AI Response")
+        st.markdown(st.session_state.last_response)
+
+        show_followups()
+
+
+# ==================================================
+# AI CODE REVIEWER
+# ==================================================
+
+elif page == "AI Code Reviewer":
+
+    st.title("🧠 AI Code Reviewer")
+    st.caption("Analyze your Python code and get improvement suggestions.")
+
+    code_to_review = st.text_area(
+        "Paste your Python code",
+        placeholder="Paste your Python code here...",
+        height=220,
+        key="reviewer_input"
+    )
+
+    if st.button(
+        "🔍 Review My Code",
+        key="review_button",
+        use_container_width=True
+    ):
+
+        if code_to_review.strip():
+
+            with st.spinner("NEURACODE is reviewing your code..."):
+
+                result = generate_response(
+                    f"""You are a senior Python code reviewer.
+
+Review the following Python code:
+
+{code_to_review}
+
+Provide your review using these sections:
+1. Overall Code Quality
+2. Errors or Potential Bugs
+3. Code Readability and Best Practices
+4. Performance Improvements
+5. Improved Version of the Code
+6. Explanation of Changes
+
+Be accurate. Do not claim an error exists unless you can identify it.
+"""
+                )
+
+            save_result("AI Code Reviewer", code_to_review, result)
+
+        else:
+            st.warning("Please paste your Python code.")
+
+    if (
+        st.session_state.last_type == "AI Code Reviewer"
+        and st.session_state.last_response
+    ):
+
+        st.markdown("### ✨ Code Review Results")
+        st.markdown(st.session_state.last_response)
+
+        show_followups()
+
+
+# ==================================================
+# CODE OPTIMIZER
+# ==================================================
+
+elif page == "Code Optimizer":
+
+    st.title("⚡ Code Optimizer")
+    st.caption("Improve your Python code with AI-powered optimization.")
+
+    code_to_optimize = st.text_area(
+        "Paste your Python code",
+        placeholder="Paste your Python code here...",
+        height=220,
+        key="optimizer_input"
+    )
+
+    if st.button(
+        "⚡ Optimize My Code",
+        key="optimizer_button",
+        use_container_width=True
+    ):
+
+        if code_to_optimize.strip():
+
+            with st.spinner("NEURACODE is optimizing your code..."):
+
+                result = generate_response(
+                    f"""You are an expert Python code optimization engineer.
+
+Analyze and optimize the following Python code:
+
+{code_to_optimize}
+
+Provide your response using these sections:
+
+1. Original Code Analysis
+2. Performance Issues
+3. Optimization Opportunities
+4. Optimized Python Code
+5. Before vs After Comparison
+6. Explanation of Improvements
+
+Requirements:
+- Preserve the original functionality.
+- Improve readability and efficiency.
+- Use Python best practices.
+- Return the optimized code in a properly formatted Python code block.
+- Do not invent performance improvements.
+"""
+                )
+
+            save_result("Code Optimizer", code_to_optimize, result)
+
+        else:
+            st.warning("Please paste your Python code.")
+
+    if (
+        st.session_state.last_type == "Code Optimizer"
+        and st.session_state.last_response
+    ):
+
+        st.markdown("### ✨ Optimization Results")
+        st.markdown(st.session_state.last_response)
+
+        show_followups()
+
+
+# ==================================================
+# TEST CASE GENERATOR
+# ==================================================
+
+elif page == "Test Case Generator":
+
+    st.title("🧪 Automatic Test Case Generator")
+    st.caption("Generate test cases and pytest scripts using AI.")
+
+    code_to_test = st.text_area(
+        "Paste your Python code",
+        placeholder="Paste your Python function here...",
+        height=220,
+        key="test_generator_input"
+    )
+
+    if st.button(
+        "🧪 Generate Test Cases",
+        key="test_generator_button",
+        use_container_width=True
+    ):
+
+        if code_to_test.strip():
+
+            with st.spinner("NEURACODE is generating test cases..."):
+
+                result = generate_response(
+                    f"""You are an expert Python software testing engineer.
+
+Analyze the following Python code:
+
+{code_to_test}
+
+Generate a detailed testing report with these sections:
+
+1. Code Understanding
+2. Normal Test Cases
+3. Edge Test Cases
+4. Expected Outputs
+5. Python pytest Test Script
+6. Explanation of Test Cases
+
+Requirements:
+- Cover normal, boundary and invalid inputs.
+- Provide accurate expected outputs.
+- Generate executable pytest code.
+- Do not claim tests were executed.
+- Identify assumptions clearly.
+"""
+                )
+
+            save_result(
+                "Test Case Generator",
+                code_to_test,
+                result
+            )
+
+        else:
+            st.warning("Please paste your Python code.")
+
+    if (
+        st.session_state.last_type == "Test Case Generator"
+        and st.session_state.last_response
+    ):
+
+        st.markdown("### ✨ Test Case Results")
         st.markdown(st.session_state.last_response)
 
         show_followups()
